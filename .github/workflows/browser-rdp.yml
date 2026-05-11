@@ -45,21 +45,27 @@ jobs:
         sleep 15
         echo "✅ Guacamole Web UI is ready."
 
-    # قدم پنجم: نصب و راه‌اندازیش دوباره و اصولی Ngrok
-    - name: Setup and Start Ngrok Tunnel
+    # قدم پنجم: نصب رسمی Ngrok از مخزن Apt و راه‌اندازی تونل
+    - name: Setup and Start Ngrok Tunnel (Official Apt)
       run: |
-        # دانلود و نصب ngrok
-        wget -q https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
-        unzip -o ngrok-stable-linux-amd64.zip
-        # احراز هویت ngrok
-        ./ngrok authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
-        # ساخت یک فایل کانفیگ ساده برای ngrok
-        echo "web_addr: 0.0.0.0:4040" > ngrok.yml
-        # اجرای تونل در پس‌زمینه، اینبار کاملاً پایدار
-        nohup ./ngrok http 8080 --config=ngrok.yml --log=stdout > ngrok.log 2>&1 &
-        # ۱۰ ثانیه قطعی صبر کن
+        # نصب ngrok با دستور رسمی خود سایت (نیاز به sudo داره)
+        curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+          | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+          && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
+          | sudo tee /etc/apt/sources.list.d/ngrok.list \
+          && sudo apt update \
+          && sudo apt install ngrok
+        
+        # اضافه کردن توکن احراز هویت
+        ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+        
+        # اجرای تونل در پس‌زمینه (با nohup پایدار)
+        nohup ngrok http 8080 > ngrok.log 2>&1 &
+        
+        # ۱۵ ثانیه قطعی صبر کن
         sleep 15
-        # چاپ لاگ ngrok برای بررسی خطا
+        
+        # چاپ لاگ Ngrok برای بررسی
         echo "--- Ngrok Log Start ---"
         cat ngrok.log
         echo "--- Ngrok Log End ---"
