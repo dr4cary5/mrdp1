@@ -58,15 +58,29 @@ jobs:
         # چند ثانیه صبر می‌کنیم تا تونل ساخته بشه
         sleep 5
 
-    # قدم آخر: نشون دادن اطلاعات مهم توی لاگ
+    # قدم آخر: صبر می‌کنیم تا تونل آماده شود و سپس لینک را نشان می‌دهیم
     - name: Show Connection Info
       run: |
-        echo "========================================="
-        echo "🌐 لینک اتصال به ریموت شما:"
-        curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'
-        echo "========================================="
-        echo "👤 اکانت پیشفرض گوآکامول:"
-        echo "   Username: guacadmin"
-        echo "   Password: guacadmin"
-        echo "========================================="
+        # چند بار تلاش می‌کنیم تا API ngrok آماده شود
+        for i in {1..10}; do
+          TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+          if [ ! -z "$TUNNEL_URL" ]; then
+            echo "========================================="
+            echo "🌐 لینک اتصال به ریموت شما: $TUNNEL_URL"
+            echo "========================================="
+            echo "👤 اکانت پیشفرض گوآکامول:"
+            echo "   Username: guacadmin"
+            echo "   Password: guacadmin"
+            echo "========================================="
+            break
+          fi
+          echo "منتظر آماده شدن تونل هستیم... (تلاش $i)"
+          sleep 3
+        done
+        # اگر بعد از ۱۰ بار لینک پیدا نشد، خطا بده
+        if [ -z "$TUNNEL_URL" ]; then
+          echo "❌ خطا: تونل Ngrok بعد از ۳۰ ثانیه آماده نشد."
+          exit 1
+        fi
+        # سیستم را ۶ ساعت زنده نگه دار
         sleep 21600
