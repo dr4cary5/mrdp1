@@ -23,11 +23,13 @@ RUN useradd -m githubuser && \
     usermod -aG sudo githubuser
 
 # 5. یه اسکریپت کوچیک برای اینکه وقتی کانتینر روشن شد، سرویس ریموت هم روشن بشه
-RUN echo '#!/bin/bash \n\
-rm -f /var/run/xrdp/xrdp.pid \n\
-/etc/init.d/xrdp start \n\
-echo "RDP is ready" \n\
-tail -f /dev/null' > /start.sh && chmod +x /start.sh
+#RUN echo '#!/bin/bash \n\
+#rm -f /var/run/xrdp/xrdp.pid \n\
+#/etc/init.d/xrdp start \n\
+#echo "RDP is ready" \n\
+#tail -f /dev/null' > /start.sh && chmod +x /start.sh
+# 5. راه‌انداز سرویس ریموت
+RUN printf '#!/bin/bash\nrm -f /var/run/xrdp/xrdp.pid\n/etc/init.d/xrdp start\necho "RDP is ready"\ntail -f /dev/null\n' > /start.sh && chmod +x /start.sh
 
 # 6. به داکر می‌گیم ما به این پورت‌ها دسترسی داریم (بعداً استفاده می‌شه)
 EXPOSE 3389 8080
