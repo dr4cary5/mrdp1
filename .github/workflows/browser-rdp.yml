@@ -26,30 +26,18 @@ jobs:
           --name guacd \
           guacamole/guacd
 
-    # این مرحله رو تغییر دادیم تا هدر ngrok رو اضافه کنه
-    - name: Run Guacamole Web UI (با هدر عبور از هشدار Ngrok)
+    # مرحله جدید: کارآگاهی برای پیدا کردن فایل
+    - name: Find guacamole.war file
       run: |
-        # ساخت یه پوشه موقت
-        mkdir -p /tmp/guacamole
-        
-        # دانلود مستقیم فایل guacamole.war
-        docker run --rm guacamole/guacamole cat /opt/guacamole/guacamole.war > /tmp/guacamole/guacamole.war
-        
-        # اجرای Tomcat با تنظیمات اختصاصی
-        docker run -d \
-          --name guacamole-web \
-          --link guacd:guacd \
-          --link rdp-host \
-          -e GUACD_HOSTNAME=guacd \
-          -e RDP_HOSTNAME=rdp-host \
-          -e RDP_PORT=3389 \
-          -e JAVA_OPTS="-Dserver.tomcat.remoteip.remote-ip-header=x-forwarded-for" \
-          -v /tmp/guacamole/guacamole.war:/opt/tomcat/webapps/guacamole.war \
-          -p 8080:8080 \
-          tomcat:9.0
-          
-        sleep 15
-        echo "✅ Guacamole Web UI is ready."
+        # یه کانتینر موقت می‌سازیم و کل سیستمش رو می‌گردیم
+        echo "🔍 در حال جستجوی فایل guacamole.war در کانتینر گوآکامول..."
+        docker run --rm guacamole/guacamole find / -name "*.war" 2>/dev/null || echo "پیدا نشد"
+        echo "🔍 جستجوی فایل‌های بزرگ jar/war..."
+        docker run --rm guacamole/guacamole find / -type f \( -name "*.war" -o -name "*.jar" \) -exec ls -lh {} \; 2>/dev/null || echo "پیدا نشد"
+        echo "🔍 مسیرهای اصلی جستجو..."
+        docker run --rm guacamole/guacamole ls -la /opt/guacamole/ 2>/dev/null || echo "مسیر /opt/guacamole/ خالیه"
+        docker run --rm guacamole/guacamole ls -la /opt/tomcat/webapps/ 2>/dev/null || echo "مسیر /opt/tomcat/webapps/ خالیه"
+        docker run --rm guacamole/guacamole ls -la /home/guacamole/tomcat/webapps/ 2>/dev/null || echo "مسیر /home/guacamole/tomcat/webapps/ خالیه"
 
     - name: Setup and Start Ngrok Tunnel (Official Apt)
       run: |
@@ -62,7 +50,6 @@ jobs:
         
         ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
         
-        # اضافه کردن هدر برای رد کردن هشدار
         ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
         
         sleep 15
