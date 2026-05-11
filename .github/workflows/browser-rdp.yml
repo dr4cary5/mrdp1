@@ -45,25 +45,35 @@ jobs:
         sleep 15
         echo "✅ Guacamole Web UI is ready."
 
-    # قدم پنجم: نصب و راه اندازی Ngrok
+    # قدم پنجم: نصب و راه‌اندازیش دوباره و اصولی Ngrok
     - name: Setup and Start Ngrok Tunnel
       run: |
         # دانلود و نصب ngrok
-        wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
-        unzip ngrok-stable-linux-amd64.zip
+        wget -q https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+        unzip -o ngrok-stable-linux-amd64.zip
         # احراز هویت ngrok
         ./ngrok authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
-        # اجرای تونل در پس‌زمینه
-        ./ngrok http 8080 > /dev/null &
-        # چند ثانیه صبر می‌کنیم تا تونل ساخته بشه
-        sleep 5
+        # ساخت یک فایل کانفیگ ساده برای ngrok
+        echo "web_addr: 0.0.0.0:4040" > ngrok.yml
+        # اجرای تونل در پس‌زمینه، اینبار کاملاً پایدار
+        nohup ./ngrok http 8080 --config=ngrok.yml --log=stdout > ngrok.log 2>&1 &
+        # ۱۰ ثانیه قطعی صبر کن
+        sleep 15
+        # چاپ لاگ ngrok برای بررسی خطا
+        echo "--- Ngrok Log Start ---"
+        cat ngrok.log
+        echo "--- Ngrok Log End ---"
 
     # قدم آخر: صبر می‌کنیم تا تونل آماده شود و سپس لینک را نشان می‌دهیم
     - name: Show Connection Info
       run: |
+        echo "========================================="
+        echo "🌐 تلاش برای یافتن لینک اتصال از API محلی Ngrok..."
         # چند بار تلاش می‌کنیم تا API ngrok آماده شود
-        for i in {1..10}; do
-          TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+        for i in {1..20}; do
+          # با خاموش کردن خطا، تلاش می‌کنیم لینک را پیدا کنیم
+          TUNNEL_URL=$(curl -s --connect-timeout 2 http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+          
           if [ ! -z "$TUNNEL_URL" ]; then
             echo "========================================="
             echo "🌐 لینک اتصال به ریموت شما: $TUNNEL_URL"
@@ -72,15 +82,17 @@ jobs:
             echo "   Username: guacadmin"
             echo "   Password: guacadmin"
             echo "========================================="
-            break
+            # سیستم را ۶ ساعت زنده نگه دار
+            sleep 21600
+            exit 0
           fi
           echo "منتظر آماده شدن تونل هستیم... (تلاش $i)"
-          sleep 3
+          sleep 5
         done
-        # اگر بعد از ۱۰ بار لینک پیدا نشد، خطا بده
-        if [ -z "$TUNNEL_URL" ]; then
-          echo "❌ خطا: تونل Ngrok بعد از ۳۰ ثانیه آماده نشد."
-          exit 1
-        fi
-        # سیستم را ۶ ساعت زنده نگه دار
-        sleep 21600
+        
+        echo "========================================="
+        echo "❌ خطا: تونل Ngrok بعد از ۱۰۰ ثانیه آماده نشد."
+        echo "--- آخرین وضعیت لاگ Ngrok ---"
+        cat ngrok.log
+        echo "--- پایان لاگ ---"
+        exit 1
