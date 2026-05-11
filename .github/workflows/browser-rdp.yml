@@ -26,18 +26,19 @@ jobs:
           --name guacd \
           guacamole/guacd
 
-    # مرحله جدید: کارآگاهی برای پیدا کردن فایل
-    - name: Find guacamole.war file
+    - name: Run Guacamole Web UI (ساده و مستقیم)
       run: |
-        # یه کانتینر موقت می‌سازیم و کل سیستمش رو می‌گردیم
-        echo "🔍 در حال جستجوی فایل guacamole.war در کانتینر گوآکامول..."
-        docker run --rm guacamole/guacamole find / -name "*.war" 2>/dev/null || echo "پیدا نشد"
-        echo "🔍 جستجوی فایل‌های بزرگ jar/war..."
-        docker run --rm guacamole/guacamole find / -type f \( -name "*.war" -o -name "*.jar" \) -exec ls -lh {} \; 2>/dev/null || echo "پیدا نشد"
-        echo "🔍 مسیرهای اصلی جستجو..."
-        docker run --rm guacamole/guacamole ls -la /opt/guacamole/ 2>/dev/null || echo "مسیر /opt/guacamole/ خالیه"
-        docker run --rm guacamole/guacamole ls -la /opt/tomcat/webapps/ 2>/dev/null || echo "مسیر /opt/tomcat/webapps/ خالیه"
-        docker run --rm guacamole/guacamole ls -la /home/guacamole/tomcat/webapps/ 2>/dev/null || echo "مسیر /home/guacamole/tomcat/webapps/ خالیه"
+        docker run -d \
+          --name guacamole-web \
+          --link guacd:guacd \
+          --link rdp-host \
+          -e GUACD_HOSTNAME=guacd \
+          -e RDP_HOSTNAME=rdp-host \
+          -e RDP_PORT=3389 \
+          -p 8080:8080 \
+          guacamole/guacamole
+        sleep 15
+        echo "✅ Guacamole Web UI is ready."
 
     - name: Setup and Start Ngrok Tunnel (Official Apt)
       run: |
@@ -50,7 +51,8 @@ jobs:
         
         ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
         
-        ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
+        # راه‌اندازی تونل با قابلیت دور زدن هشدار
+        nohup ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
         
         sleep 15
         
