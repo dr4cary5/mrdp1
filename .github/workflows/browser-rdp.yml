@@ -45,13 +45,18 @@ jobs:
         sleep 15
         echo "✅ Guacamole Web UI is ready."
 
-    # قدم پنجم: ساخت تونل Ngrok برای در معرض دید قرار دادن رابط کاربری
-    - name: Expose with Ngrok
-      uses: ngrok/ngrok-action@v1
-      with:
-        authtoken: ${{ secrets.NGROK_AUTH_TOKEN }}
-        protocol: http
-        port: 8080
+    # قدم پنجم: نصب و راه اندازی Ngrok
+    - name: Setup and Start Ngrok Tunnel
+      run: |
+        # دانلود و نصب ngrok
+        wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+        unzip ngrok-stable-linux-amd64.zip
+        # احراز هویت ngrok
+        ./ngrok authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+        # اجرای تونل در پس‌زمینه
+        ./ngrok http 8080 > /dev/null &
+        # چند ثانیه صبر می‌کنیم تا تونل ساخته بشه
+        sleep 5
 
     # قدم آخر: نشون دادن اطلاعات مهم توی لاگ
     - name: Show Connection Info
