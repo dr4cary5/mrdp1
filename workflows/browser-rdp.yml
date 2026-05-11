@@ -1,0 +1,67 @@
+name: Browser RDP for mhr-rs
+on: [workflow_dispatch]
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+    # قدم صفر: پروژه رو چک کن
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # قدم اول: عکس سیستم عامل موقت رو بساز
+    - name: Build RDP image
+      run: docker build -t my-rdp-image .
+
+    # قدم دوم: سیستمعامل ما رو اجرا کن
+    - name: Run RDP container
+      run: |
+        docker run -d \
+          --name rdp-host \
+          -p 3389:3389 \
+          my-rdp-image
+    
+    # قدم سوم: سرویس "مترجم" گوآکامول رو اجرا کن
+    - name: Run Guacamole Server (guacd)
+      run: |
+        docker run -d \
+          --name guacd \
+          guacamole/guacd
+
+    # قدم چهارم: رابط کاربری گوآکامول رو اجرا کن و به سرویس قبلی وصل کن
+    - name: Run Guacamole Web UI
+      run: |
+        docker run -d \
+          --name guacamole-web \
+          --link guacd:guacd \
+          --link rdp-host \
+          -e GUACD_HOSTNAME=guacd \
+          -e RDP_HOSTNAME=rdp-host \
+          -e RDP_PORT=3389 \
+          -p 8080:8080 \
+          guacamole/guacamole
+        sleep 15
+        echo "✅ Guacamole Web UI is ready."
+
+    # قدم پنجم: ساخت تونل Ngrok برای در معرض دید قرار دادن رابط کاربری
+    - name: Expose with Ngrok
+      uses: ngrok/ngrok-action@v1
+      with:
+        authtoken: ${{ secrets.NGROK_AUTH_TOKEN }}
+        protocol: http
+        port: 8080
+
+    # قدم آخر: نشون دادن اطلاعات مهم توی لاگ
+    - name: Show Connection Info
+      run: |
+        echo "========================================="
+        echo "🌐 لینک اتصال به ریموت شما:"
+        curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+        echo "========================================="
+        echo "👤 اکانت پیشفرض گوآکامول:"
+        echo "   Username: guacadmin"
+        echo "   Password: guacadmin"
+        echo "========================================="
+        sleep 21600
