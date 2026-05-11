@@ -7,15 +7,12 @@ jobs:
     timeout-minutes: 360
     
     steps:
-    # قدم صفر: پروژه رو چک کن
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # قدم اول: عکس سیستم عامل موقت رو بساز
     - name: Build RDP image
       run: docker build -t my-rdp-image .
 
-    # قدم دوم: سیستمعامل ما رو اجرا کن
     - name: Run RDP container
       run: |
         docker run -d \
@@ -23,16 +20,22 @@ jobs:
           -p 3389:3389 \
           my-rdp-image
     
-    # قدم سوم: سرویس "مترجم" گوآکامول رو اجرا کن
     - name: Run Guacamole Server (guacd)
       run: |
         docker run -d \
           --name guacd \
           guacamole/guacd
 
-    # قدم چهارم: رابط کاربری گوآکامول رو اجرا کن و به سرویس قبلی وصل کن
-    - name: Run Guacamole Web UI
+    # این مرحله رو تغییر دادیم تا هدر ngrok رو اضافه کنه
+    - name: Run Guacamole Web UI (با هدر عبور از هشدار Ngrok)
       run: |
+        # ساخت یه پوشه موقت
+        mkdir -p /tmp/guacamole
+        
+        # دانلود مستقیم فایل guacamole.war
+        docker run --rm guacamole/guacamole cat /opt/guacamole/guacamole.war > /tmp/guacamole/guacamole.war
+        
+        # اجرای Tomcat با تنظیمات اختصاصی
         docker run -d \
           --name guacamole-web \
           --link guacd:guacd \
@@ -40,15 +43,16 @@ jobs:
           -e GUACD_HOSTNAME=guacd \
           -e RDP_HOSTNAME=rdp-host \
           -e RDP_PORT=3389 \
+          -e JAVA_OPTS="-Dserver.tomcat.remoteip.remote-ip-header=x-forwarded-for" \
+          -v /tmp/guacamole/guacamole.war:/opt/tomcat/webapps/guacamole.war \
           -p 8080:8080 \
-          guacamole/guacamole
+          tomcat:9.0
+          
         sleep 15
         echo "✅ Guacamole Web UI is ready."
 
-    # قدم پنجم: نصب رسمی Ngrok از مخزن Apt و راه‌اندازی تونل
     - name: Setup and Start Ngrok Tunnel (Official Apt)
       run: |
-        # نصب ngrok با دستور رسمی خود سایت (نیاز به sudo داره)
         curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
           | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
           && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
@@ -56,28 +60,22 @@ jobs:
           && sudo apt update \
           && sudo apt install ngrok
         
-        # اضافه کردن توکن احراز هویت
         ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
         
-        # اجرای تونل در پس‌زمینه (با nohup پایدار)
-        nohup ngrok http 8080 > ngrok.log 2>&1 &
+        # اضافه کردن هدر برای رد کردن هشدار
+        ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
         
-        # ۱۵ ثانیه قطعی صبر کن
         sleep 15
         
-        # چاپ لاگ Ngrok برای بررسی
         echo "--- Ngrok Log Start ---"
         cat ngrok.log
         echo "--- Ngrok Log End ---"
 
-    # قدم آخر: صبر می‌کنیم تا تونل آماده شود و سپس لینک را نشان می‌دهیم
     - name: Show Connection Info
       run: |
         echo "========================================="
         echo "🌐 تلاش برای یافتن لینک اتصال از API محلی Ngrok..."
-        # چند بار تلاش می‌کنیم تا API ngrok آماده شود
         for i in {1..20}; do
-          # با خاموش کردن خطا، تلاش می‌کنیم لینک را پیدا کنیم
           TUNNEL_URL=$(curl -s --connect-timeout 2 http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
           
           if [ ! -z "$TUNNEL_URL" ]; then
@@ -88,7 +86,6 @@ jobs:
             echo "   Username: guacadmin"
             echo "   Password: guacadmin"
             echo "========================================="
-            # سیستم را ۶ ساعت زنده نگه دار
             sleep 21600
             exit 0
           fi
@@ -96,9 +93,5 @@ jobs:
           sleep 5
         done
         
-        echo "========================================="
         echo "❌ خطا: تونل Ngrok بعد از ۱۰۰ ثانیه آماده نشد."
-        echo "--- آخرین وضعیت لاگ Ngrok ---"
-        cat ngrok.log
-        echo "--- پایان لاگ ---"
         exit 1
