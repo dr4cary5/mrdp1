@@ -1,4 +1,4 @@
-name: KasmVNC Desktop
+name: Web Desktop (Firefox)
 on: [workflow_dispatch]
 
 jobs:
@@ -6,25 +6,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Install Desktop + Firefox + KasmVNC
+      - name: Install Desktop + Firefox + VNC
         run: |
           sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies firefox
-          
-          # KasmVNC (سبک، بدون AngularJS!)
-          wget -q https://github.com/kasmtech/KasmVNC/releases/download/v1.3.3/kasmvncserver_jammy_amd64.deb
-          sudo apt install -y ./kasmvncserver_jammy_amd64.deb
+          sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server tigervnc-xorg-extension novnc websockify
           
           # تنظیم رمز عبور VNC
           mkdir -p ~/.vnc
           echo "shadowx" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
           
-          # اجرای XFCE + KasmVNC روی پورت 8080
+          # اجرای XFCE با TigerVNC
           export DISPLAY=:1
-          vncserver :1 -geometry 1366x768 -depth 24 -websocketPort 8080
+          vncserver :1 -geometry 1366x768 -depth 24 -localhost yes
           
-          # صبر برای آماده شدن
+          # اجرای noVNC (WebSocket → VNC bridge)
+          websockify --web=/usr/share/novnc 8080 localhost:5901 &
+          
           sleep 5
 
       - name: Setup Ngrok
