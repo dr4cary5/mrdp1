@@ -5,11 +5,7 @@ return [
     'timeout' => 30,
     'follow_redirects' => true,
     'max_redirects' => 5,
-    'strip_headers' => [
-        'x-frame-options',
-        'content-security-policy',
-        'strict-transport-security',
-    ],
+    'strip_headers' => ['x-frame-options', 'content-security-policy', 'strict-transport-security'],
     'blacklist' => [],
     'allowed_ports' => [80, 443, 8080, 8443],
 ];
