@@ -1,3 +1,7 @@
+<?php
+// Fix Ngrok warning
+header('ngrok-skip-browser-warning: true');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,10 +26,6 @@
             <span class="feature">🔒 HTTPS</span>
             <span class="feature">🌍 Any Site</span>
             <span class="feature">🎭 Stealth</span>
-        </div>
-        
-        <div class="info">
-            <p>Powered by PHP <?php echo phpversion(); ?> | <a href="https://github.com/dr4cary5/shadowx">GitHub</a></p>
         </div>
     </div>
 </body>
