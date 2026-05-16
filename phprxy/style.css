@@ -1,0 +1,88 @@
+body, input
+{
+    font-family: "Bitstream Vera Sans", Arial, Helvetica, sans-serif;
+    color: #44352C;
+}
+
+a
+ {
+	color: #9B9C83;
+	text-decoration: none;
+	border-bottom: 1px orange dashed;
+	font-weight: bold;
+	font-size: small;
+}
+
+a:hover 
+{
+    color: #0080FF;
+}
+
+#container
+       {
+	border: 1px #9B9C83 solid;
+	-moz-border-radius: 8px;
+	margin: auto;
+	padding: 0px 5px 0px 5px;
+	width: 700px;
+	background-color: #EEEBEA;
+	height: 106px;
+}
+
+ul#navigation, ul#form
+{
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#address_bar
+   {
+	margin: 15px;
+	border-color: #BFAA9B #7B6251 #44352C #BFAA9B;
+	border-top: 2px #BFAA9B solid;
+	border-left: 3px #BFAA9B solid;
+	border-right: 3px #44352C solid;
+	border-bottom: 3px #44352C solid;
+	background-color: #AA8E79;
+	text-align: center;
+	padding: 5px;
+	color: #ffffff;
+}
+
+#go
+{
+    background-color: #ffffff;
+    font-weight: bold;
+    color: #AA8E79;
+    border: 0 #ffffff solid;
+    padding: 2px 5px;
+}
+
+#address_box
+{
+    width: 500px;
+}
+
+#error, #auth
+{
+    background-color: #BF6464;
+    border-top: 1px solid #44352C;
+    border-bottom: 1px solid #44352C;
+    width: 700px;
+    clear: both;
+}
+
+#auth
+{
+    background-color: #94C261;
+}
+
+#error p, #auth p, #auth form
+{
+    margin: 5px;
+}
+html    {
+background-image: url('root.gif');
+}
+div.c1 {position: absolute; left:150px; top:115px;}
