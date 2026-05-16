@@ -6,10 +6,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Run Guacamole + VNC
+      - name: Install Docker + VNC
         run: |
           sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server docker.io
+          
+          # حذف docker.io اگه هست
+          sudo apt remove -y docker.io containerd 2>/dev/null || true
+          
+          # نصب Docker CE
+          curl -fsSL https://get.docker.com | sudo sh
+          
+          # نصب بقیه چیزا
+          sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server
           
           # VNC
           mkdir -p ~/.vnc
@@ -18,12 +26,15 @@ jobs:
           vncserver -kill :1 2>/dev/null || true
           vncserver :1 -geometry 1366x768 -depth 24 -localhost yes
           
-          # Guacamole + guacd
+          # Guacamole
           sudo docker run -d --name guacd --network host guacamole/guacd
           sudo docker run -d --name guacamole --network host \
             -e GUACD_HOSTNAME=127.0.0.1 \
             -e GUACD_PORT=4822 \
             guacamole/guacamole
+          
+          sleep 5
+          echo "✅ Guacamole ready"
 
       - name: Ngrok
         run: |
