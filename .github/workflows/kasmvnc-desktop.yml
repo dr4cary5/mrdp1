@@ -1,4 +1,4 @@
-name: VNC Desktop (Test)
+name: noVNC Debug
 on: [workflow_dispatch]
 
 jobs:
@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Install + Debug
+      - name: Install + Debug Everything
         run: |
           sudo apt update
           sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server novnc websockify python3 net-tools
@@ -16,28 +16,30 @@ jobs:
           chmod 600 ~/.vnc/passwd
           
           vncserver -kill :1 2>/dev/null || true
-          
-          # حذف -localhost تا websockify بتونه وصل بشه
           vncserver :1 -geometry 1366x768 -depth 24
           
           sleep 3
           
-          # چک پورت VNC
-          echo "=== VNC Port ==="
-          netstat -tlnp | grep 5901
+          # تست VNC بدون websockify
+          echo "=== Test 1: VNC is running ==="
+          timeout 2 nc -zv 127.0.0.1 5901 2>&1
           
-          # چک پروسه VNC
-          echo "=== VNC Process ==="
-          ps aux | grep vnc | grep -v grep
+          # اجرای websockify با خروجی کامل
+          echo "=== Test 2: Starting websockify ==="
+          websockify 8080 127.0.0.1:5901 --web=/usr/share/novnc --log-file=/tmp/websockify.log &
+          sleep 3
           
-          # اجرای websockify با پورت جدا
-          websockify -D --web=/usr/share/novnc 8080 localhost:5901
+          # چک لاگ websockify
+          echo "=== Test 3: websockify log ==="
+          cat /tmp/websockify.log
           
-          sleep 2
+          # تست websockify
+          echo "=== Test 4: HTTP test ==="
+          curl -s -I http://127.0.0.1:8080/ 2>&1 | head -5
           
-          # چک websockify
-          echo "=== WebSocket Port ==="
-          netstat -tlnp | grep 8080
+          # چک WebSocket endpoint
+          echo "=== Test 5: WebSocket test ==="
+          curl -s -H "Upgrade: websocket" -H "Connection: Upgrade" http://127.0.0.1:8080/websockify 2>&1 | head -5
 
       - name: Ngrok
         run: |
@@ -56,11 +58,6 @@ jobs:
         run: |
           TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
           echo "URL: $TUNNEL_URL/vnc.html"
+          echo "or: $TUNNEL_URL/vnc_lite.html"
           echo "Password: shadowx"
-          
-          # تست لوکال VNC
-          echo "=== Testing VNC locally ==="
-          timeout 3 nc -zv localhost 5901 2>&1 || echo "VNC not responding"
-          timeout 3 curl -s http://localhost:8080/ | head -3 || echo "noVNC not responding"
-          
           sleep 21600
