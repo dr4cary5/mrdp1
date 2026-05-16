@@ -24,6 +24,7 @@ curl_setopt_array($ch, [
 ]);
 
 $body = curl_exec($ch);
+$finalUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
 $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 $error = curl_error($ch);
@@ -35,6 +36,71 @@ if ($error) {
     exit;
 }
 
+// Rewrite HTML
+if ($type && strpos($type, 'text/html') !== false) {
+    $body = rewriteUrls($body, $finalUrl);
+}
+
 http_response_code($code);
 if ($type) header('Content-Type: ' . $type);
 echo $body;
+
+
+function rewriteUrls($html, $baseUrl) {
+    $proxyBase = 'proxy.php?url=';
+    $baseParts = parse_url($baseUrl);
+    $baseHost = $baseParts['scheme'] . '://' . $baseParts['host'];
+    
+    // src, href, action
+    $html = preg_replace_callback(
+        '/(src|href|action)=["\'](.*?)["\']/i',
+        function($m) use ($proxyBase, $baseHost, $baseParts) {
+            $attr = $m[1];
+            $link = $m[2];
+            
+            // Skip non-http links
+            if (preg_match('/^(data:|javascript:|#|mailto:|tel:)/i', $link)) {
+                return $m[0];
+            }
+            
+            // Absolute URL
+            if (preg_match('/^https?:\/\//i', $link)) {
+                return $attr . '="' . $proxyBase . urlencode($link) . '"';
+            }
+            
+            // Protocol-relative
+            if (preg_match('/^\/\//', $link)) {
+                return $attr . '="' . $proxyBase . urlencode($baseParts['scheme'] . ':' . $link) . '"';
+            }
+            
+            // Root-relative
+            if (preg_match('/^\//', $link)) {
+                return $attr . '="' . $proxyBase . urlencode($baseHost . $link) . '"';
+            }
+            
+            // Relative
+            $dir = dirname($baseParts['path'] ?? '/');
+            return $attr . '="' . $proxyBase . urlencode($baseHost . $dir . '/' . $link) . '"';
+        },
+        $html
+    );
+    
+    // url() in CSS
+    $html = preg_replace_callback(
+        '/url\(["\']?(.*?)["\']?\)/i',
+        function($m) use ($proxyBase, $baseHost, $baseParts) {
+            $link = $m[1];
+            if (preg_match('/^(data:|#)/i', $link)) return $m[0];
+            if (preg_match('/^https?:\/\//i', $link)) {
+                return 'url(' . $proxyBase . urlencode($link) . ')';
+            }
+            if (preg_match('/^\//', $link)) {
+                return 'url(' . $proxyBase . urlencode($baseHost . $link) . ')';
+            }
+            return $m[0];
+        },
+        $html
+    );
+    
+    return $html;
+}
