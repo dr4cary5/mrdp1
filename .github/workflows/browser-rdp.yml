@@ -1,86 +1,50 @@
-name: Browser RDP for mhr-rs
+name: KasmVNC Desktop
 on: [workflow_dispatch]
 
 jobs:
-  build-and-run:
+  desktop:
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Build RDP image
-      run: docker build -t my-rdp-image .
-
-    - name: Run RDP container
-      run: |
-        docker run -d \
-          --name rdp-host \
-          -p 3389:3389 \
-          my-rdp-image
-    
-    - name: Run Guacamole Server (guacd)
-      run: |
-        docker run -d \
-          --name guacd \
-          guacamole/guacd
-
-    - name: Run Guacamole Web UI (ساده و مستقیم)
-      run: |
-        docker run -d \
-          --name guacamole-web \
-          --link guacd:guacd \
-          --link rdp-host \
-          -e GUACD_HOSTNAME=guacd \
-          -e RDP_HOSTNAME=rdp-host \
-          -e RDP_PORT=3389 \
-          -p 8080:8080 \
-          guacamole/guacamole
-        sleep 15
-        echo "✅ Guacamole Web UI is ready."
-
-    - name: Setup and Start Ngrok Tunnel (Official Apt)
-      run: |
-        curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-          | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
-          && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
-          | sudo tee /etc/apt/sources.list.d/ngrok.list \
-          && sudo apt update \
-          && sudo apt install ngrok
-        
-        ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
-        
-        # راه‌اندازی تونل با قابلیت دور زدن هشدار
-        nohup ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
-        
-        sleep 15
-        
-        echo "--- Ngrok Log Start ---"
-        cat ngrok.log
-        echo "--- Ngrok Log End ---"
-
-    - name: Show Connection Info
-      run: |
-        echo "========================================="
-        echo "🌐 تلاش برای یافتن لینک اتصال از API محلی Ngrok..."
-        for i in {1..20}; do
-          TUNNEL_URL=$(curl -s --connect-timeout 2 http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+      - name: Install Desktop + Firefox + KasmVNC
+        run: |
+          sudo apt update
+          sudo apt install -y xfce4 xfce4-goodies firefox
           
-          if [ ! -z "$TUNNEL_URL" ]; then
-            echo "========================================="
-            echo "🌐 لینک اتصال به ریموت شما: $TUNNEL_URL"
-            echo "========================================="
-            echo "👤 اکانت پیشفرض گوآکامول:"
-            echo "   Username: guacadmin"
-            echo "   Password: guacadmin"
-            echo "========================================="
-            sleep 21600
-            exit 0
-          fi
-          echo "منتظر آماده شدن تونل هستیم... (تلاش $i)"
+          # KasmVNC (سبک، بدون AngularJS!)
+          wget -q https://github.com/kasmtech/KasmVNC/releases/download/v1.3.3/kasmvncserver_jammy_amd64.deb
+          sudo apt install -y ./kasmvncserver_jammy_amd64.deb
+          
+          # تنظیم رمز عبور VNC
+          mkdir -p ~/.vnc
+          echo "shadowx" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+          
+          # اجرای XFCE + KasmVNC روی پورت 8080
+          export DISPLAY=:1
+          vncserver :1 -geometry 1366x768 -depth 24 -websocketPort 8080
+          
+          # صبر برای آماده شدن
           sleep 5
-        done
-        
-        echo "❌ خطا: تونل Ngrok بعد از ۱۰۰ ثانیه آماده نشد."
-        exit 1
+
+      - name: Setup Ngrok
+        run: |
+          curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+            && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
+            | sudo tee /etc/apt/sources.list.d/ngrok.list \
+            && sudo apt update \
+            && sudo apt install ngrok
+          
+          ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+          nohup ngrok http 8080 --request-header-add="ngrok-skip-browser-warning:true" > ngrok.log 2>&1 &
+          sleep 10
+
+      - name: Show URL
+        run: |
+          TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          echo "========================================="
+          echo "🌐 Desktop URL: $TUNNEL_URL"
+          echo "🔑 VNC Password: shadowx"
+          echo "========================================="
+          sleep 21600
