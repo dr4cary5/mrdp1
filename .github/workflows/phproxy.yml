@@ -14,16 +14,39 @@ jobs:
           sudo apt update
           sudo apt install -y php-cli php-curl php-mbstring
 
-      - name: Start PHP Server
+      - name: Start PHP with Watchdog
         run: |
-          # فایل‌ها از قبل توی phprxyv2 هستن
           cd phprxyv2
-          nohup php -S 0.0.0.0:8888 > /tmp/php.log 2>&1 &
-          sleep 3
           
-          # چک کن PHP بالا اومده
-          curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/
-          echo ""
+          # اسکریپت watchdog
+          cat > /tmp/keepalive.sh << 'EOF'
+          #!/bin/bash
+          while true; do
+            if ! pgrep -f "php -S 0.0.0.0:8888" > /dev/null; then
+              echo "$(date): Restarting PHP..."
+              php -S 0.0.0.0:8888 >> /tmp/php.log 2>&1 &
+            fi
+            sleep 5
+          done
+          EOF
+          
+          chmod +x /tmp/keepalive.sh
+          nohup /tmp/keepalive.sh > /dev/null 2>&1 &
+          
+          # صبر برای استارت اولیه
+          sleep 5
+          
+          # چک PHP
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/)
+          echo "PHP Server Status: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "❌ PHP failed to start!"
+            cat /tmp/php.log 2>/dev/null
+            exit 1
+          fi
+          
+          echo "✅ PHP running on port 8888"
 
       - name: Setup Ngrok
         run: |
@@ -39,5 +62,8 @@ jobs:
           TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
           echo "========================================="
           echo "🌐 ShadowX Proxy: $TUNNEL_URL"
+          echo ""
+          echo "📋 Test: $TUNNEL_URL/test.php"
+          echo "🌍 Browse: $TUNNEL_URL/proxy.php?url=google.com"
           echo "========================================="
           sleep 21600
