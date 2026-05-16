@@ -1,5 +1,4 @@
 <?php
-// Fix Ngrok warning
 header('ngrok-skip-browser-warning: true');
 ?>
 <!DOCTYPE html>
