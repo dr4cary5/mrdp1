@@ -1,24 +1,14 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
     font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #0a0a0a;
-    color: #e0e0e0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    flex-direction: column;
-    padding: 20px;
+    background: #0a0a0a; color: #e0e0e0;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; flex-direction: column; padding: 20px;
 }
 .container {
-    background: #111;
-    padding: 3rem;
-    border-radius: 20px;
+    background: #111; padding: 3rem; border-radius: 20px;
     box-shadow: 0 0 60px rgba(110, 0, 255, 0.2);
-    width: 100%;
-    max-width: 700px;
-    border: 1px solid #222;
-    text-align: center;
+    width: 100%; max-width: 700px; border: 1px solid #222; text-align: center;
 }
 .logo { font-size: 4rem; margin-bottom: 0.5rem; }
 h1 { color: #8a2be2; font-size: 2.5rem; letter-spacing: 3px; margin-bottom: 0.3rem; }
@@ -28,7 +18,6 @@ input {
     flex: 1; padding: 16px; font-size: 16px;
     border: 2px solid #333; border-radius: 12px;
     background: #0d0d0d; color: #fff; outline: none;
-    transition: border-color 0.3s;
 }
 input:focus { border-color: #6e00ff; }
 button {
@@ -36,14 +25,11 @@ button {
     background: #6e00ff; color: #fff;
     border: none; border-radius: 12px;
     cursor: pointer; font-weight: bold;
-    transition: all 0.3s;
 }
-button:hover { background: #8a2be2; transform: scale(1.02); }
+button:hover { background: #8a2be2; }
 .features { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 1.5rem 0; }
 .feature {
     background: #1a1a1a; padding: 8px 16px;
     border-radius: 20px; font-size: 0.8rem;
     color: #999; border: 1px solid #2a2a2a;
 }
-.info { margin-top: 1rem; color: #555; font-size: 0.8rem; }
-.info a { color: #6e00ff; text-decoration: none; }
