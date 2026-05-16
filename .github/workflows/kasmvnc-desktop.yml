@@ -1,4 +1,4 @@
-name: Web Desktop (Firefox)
+name: Web Desktop (Fixed)
 on: [workflow_dispatch]
 
 jobs:
@@ -6,24 +6,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: Install Desktop + Firefox + VNC
+      - name: Install Everything
         run: |
           sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server tigervnc-xorg-extension novnc websockify
+          sudo apt install -y xfce4 xfce4-goodies firefox tigervnc-standalone-server novnc websockify python3
           
-          # تنظیم رمز عبور VNC
+          # تنظیم رمز VNC
           mkdir -p ~/.vnc
           echo "shadowx" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
           
-          # اجرای XFCE با TigerVNC
-          export DISPLAY=:1
+          # کشتن VNC قبلی اگه هست
+          vncserver -kill :1 2>/dev/null || true
+          
+          # اجرای VNC روی دیسپلی ۱
           vncserver :1 -geometry 1366x768 -depth 24 -localhost yes
           
-          # اجرای noVNC (WebSocket → VNC bridge)
-          websockify --web=/usr/share/novnc 8080 localhost:5901 &
+          # تست VNC (باید ok بده)
+          sleep 3
+          echo "=== VNC Status ==="
+          vncserver -list
           
-          sleep 5
+          # اجرای websockify برای پل WebSocket
+          websockify -D --web=/usr/share/novnc 8080 localhost:5901
+          
+          # تست websockify
+          sleep 2
+          echo "=== WebSocket Status ==="
+          curl -s http://localhost:8080/ | head -5
 
       - name: Setup Ngrok
         run: |
@@ -42,7 +52,11 @@ jobs:
         run: |
           TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
           echo "========================================="
-          echo "🌐 Desktop URL: $TUNNEL_URL"
+          echo "🌐 Desktop URL: $TUNNEL_URL/vnc.html"
           echo "🔑 VNC Password: shadowx"
+          echo ""
+          echo "⚠️ اگر خطا دادی، اینارو امتحان کن:"
+          echo "  1. یه بار دیگه Run workflow بزن"
+          echo "  2. آدرس رو با /vnc_lite.html تست کن"
           echo "========================================="
           sleep 21600
